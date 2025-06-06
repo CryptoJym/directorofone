@@ -2,6 +2,10 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 
+// Import database and repositories
+import '../config/database'; // Initialize database connection
+import { consultationRepository, workflowRepository, analyticsRepository } from '../repositories';
+
 // Load environment variables
 dotenv.config();
 
@@ -40,26 +44,44 @@ app.get('/api', (req: Request, res: Response) => {
   });
 });
 
-// Consultation endpoint
-app.post('/api/consultation', async (req: Request, res: Response) => {
+// Consultation endpoints
+app.post('/api/consultation', async (req: Request, res: Response): Promise<void> => {
   try {
     const { name, email, company, department, challenges } = req.body;
     
-    // TODO: Implement consultation booking logic
-    // For now, just return success
+    // Validate required fields
+    if (!name || !email || !challenges) {
+      res.status(400).json({
+        success: false,
+        message: 'Name, email, and challenges are required',
+      });
+      return;
+    }
+
+    // Create consultation in database
+    const consultation = await consultationRepository.create({
+      name,
+      email,
+      company,
+      department,
+      challenges,
+    });
+
     res.json({
       success: true,
       message: 'Consultation request received',
       data: {
-        name,
-        email,
-        company,
-        department,
-        challenges,
-        bookingId: `DOO-${Date.now()}`,
+        id: consultation.id,
+        bookingId: consultation.bookingId,
+        name: consultation.name,
+        email: consultation.email,
+        company: consultation.company,
+        department: consultation.department,
+        status: consultation.status,
       },
     });
   } catch (error) {
+    console.error('Error creating consultation:', error);
     res.status(500).json({
       success: false,
       message: 'Error processing consultation request',
@@ -68,53 +90,146 @@ app.post('/api/consultation', async (req: Request, res: Response) => {
   }
 });
 
-// Automation workflow endpoint
+// Get consultations
+app.get('/api/consultations', async (req: Request, res: Response) => {
+  try {
+    const { status, page = 1, limit = 10 } = req.query;
+    
+    const skip = (Number(page) - 1) * Number(limit);
+    const take = Number(limit);
+
+    const result = await consultationRepository.findAll({
+      status: status as any,
+      skip,
+      take,
+    });
+
+    res.json({
+      success: true,
+      data: result.consultations,
+      pagination: {
+        total: result.total,
+        page: Number(page),
+        limit: Number(limit),
+        pages: Math.ceil(result.total / Number(limit)),
+      },
+    });
+  } catch (error) {
+    console.error('Error fetching consultations:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching consultations',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Automation workflow endpoints
 app.get('/api/automation/workflows', async (req: Request, res: Response) => {
-  // TODO: Implement workflow retrieval
-  res.json({
-    success: true,
-    workflows: [
-      {
-        id: 'wf-001',
-        name: 'Daily Status Report',
-        description: 'Automated daily department status report',
-        frequency: 'daily',
-        enabled: true,
+  try {
+    // For now, using a demo user ID. In production, this would come from auth
+    const userId = req.query.userId as string || 'demo-user';
+    
+    const result = await workflowRepository.findByUserId(userId, {
+      isActive: req.query.active === 'true' ? true : undefined,
+    });
+
+    res.json({
+      success: true,
+      workflows: result.workflows.map(workflow => ({
+        id: workflow.id,
+        name: workflow.name,
+        description: workflow.description,
+        type: workflow.type,
+        frequency: workflow.frequency,
+        enabled: workflow.isActive,
+        lastRunAt: workflow.lastRunAt,
+        nextRunAt: workflow.nextRunAt,
+      })),
+      total: result.total,
+    });
+  } catch (error) {
+    console.error('Error fetching workflows:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching workflows',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
+});
+
+// Create workflow
+app.post('/api/automation/workflows', async (req: Request, res: Response) => {
+  try {
+    const { name, description, type, trigger, actions, frequency } = req.body;
+    const userId = req.body.userId || 'demo-user';
+
+    const workflow = await workflowRepository.create({
+      userId,
+      name,
+      description,
+      type,
+      trigger,
+      actions,
+      frequency,
+    });
+
+    res.json({
+      success: true,
+      message: 'Workflow created successfully',
+      workflow: {
+        id: workflow.id,
+        name: workflow.name,
+        description: workflow.description,
+        type: workflow.type,
+        frequency: workflow.frequency,
+        enabled: workflow.isActive,
       },
-      {
-        id: 'wf-002',
-        name: 'Task Prioritization',
-        description: 'AI-powered task priority assignment',
-        frequency: 'real-time',
-        enabled: true,
-      },
-      {
-        id: 'wf-003',
-        name: 'Budget Alert',
-        description: 'Automated budget threshold notifications',
-        frequency: 'on-trigger',
-        enabled: true,
-      },
-    ],
-  });
+    });
+  } catch (error) {
+    console.error('Error creating workflow:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error creating workflow',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 });
 
 // Analytics endpoint
 app.get('/api/analytics/summary', async (req: Request, res: Response) => {
-  // TODO: Implement real analytics
-  res.json({
-    success: true,
-    summary: {
-      timeSaved: {
-        weekly: 12,
-        monthly: 48,
-        unit: 'hours',
+  try {
+    const userId = req.query.userId as string || 'demo-user';
+    const period = (req.query.period as 'week' | 'month' | 'year') || 'month';
+
+    const summary = await analyticsRepository.getSummary(userId, period);
+
+    res.json({
+      success: true,
+      summary: {
+        timeSaved: {
+          weekly: summary.timeSaved.average * 7,
+          monthly: summary.timeSaved.total,
+          unit: 'hours',
+        },
+        tasksAutomated: summary.tasksAutomated.total,
+        efficiencyGain: summary.efficiencyScore.current,
+        activeWorkflows: summary.activeWorkflows.current,
+        trends: {
+          timeSaved: summary.timeSaved.trend,
+          tasksAutomated: summary.tasksAutomated.trend,
+          efficiency: summary.efficiencyScore.trend,
+        },
       },
-      tasksAutomated: 156,
-      efficiencyGain: 68,
-      activeWorkflows: 8,
-    },
-  });
+    });
+  } catch (error) {
+    console.error('Error fetching analytics:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Error fetching analytics',
+      error: error instanceof Error ? error.message : 'Unknown error',
+    });
+  }
 });
 
 // Error handling middleware
