@@ -5,6 +5,7 @@ const { jsonResponse } = require('../middleware/middleware');
 const healthRoutes = require('./health.routes');
 const userRoutes = require('./user.routes');
 const taskRoutes = require('./task.routes');
+const analyticsRoutes = require('./analytics.routes');
 
 // Route registry
 const routes = new Map();
@@ -143,6 +144,19 @@ apiRouter.post('/tasks', taskRoutes.createTask);
 apiRouter.put('/tasks/:id', taskRoutes.updateTask);
 apiRouter.delete('/tasks/:id', taskRoutes.deleteTask);
 apiRouter.patch('/tasks/:id/status', taskRoutes.updateTaskStatus);
+
+// Analytics routes
+apiRouter.post('/analytics/events', analyticsRoutes.trackEvent);
+apiRouter.post('/analytics/metrics', analyticsRoutes.recordMetric);
+apiRouter.get('/analytics/dashboard', analyticsRoutes.getDashboardMetrics);
+apiRouter.get('/analytics/timeseries/:metric', analyticsRoutes.getTimeSeriesData);
+apiRouter.get('/analytics/charts/:type', analyticsRoutes.getChartData);
+
+// Report routes
+apiRouter.post('/analytics/reports', analyticsRoutes.generateReport);
+apiRouter.get('/analytics/reports', analyticsRoutes.getReports);
+apiRouter.get('/analytics/reports/:id', analyticsRoutes.getReport);
+apiRouter.get('/analytics/reports/:id/export', analyticsRoutes.exportReport);
 
 // Mount API routes
 mainRouter.use(config.apiPrefix, apiRouter);
