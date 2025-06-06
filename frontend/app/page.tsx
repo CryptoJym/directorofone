@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { Hero, Features, Container, Section, Heading, Text, Button, Grid, Card, CardHeader, CardTitle, CardDescription } from '../src/components';
 import { initTheme } from '../src/styles/design-system';
 import landingContent from '../../content/copy/landing.json';
+import { IntegrationsPreview } from '@/src/components/sections/IntegrationsPreview';
 
 // Icons for features
 const FeatureIcons = {
@@ -53,11 +54,6 @@ export default function Home() {
     initTheme();
   }, []);
 
-  const featuresWithIcons = landingContent.features.items.map((feature, index) => ({
-    ...feature,
-    icon: featureIconMap[index],
-  }));
-
   return (
     <main>
       {/* Hero Section */}
@@ -77,10 +73,12 @@ export default function Home() {
         title={landingContent.features.title}
         subtitle={landingContent.features.subtitle}
         description={landingContent.features.description}
-        features={featuresWithIcons}
-        columns={3}
+        features={landingContent.features.items}
+        icons={featureIconMap}
         variant="cards"
       />
+
+      <IntegrationsPreview />
 
       {/* Benefits Section */}
       <Section className="bg-background">

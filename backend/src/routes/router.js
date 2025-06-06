@@ -5,6 +5,7 @@ const { jsonResponse } = require('../middleware/middleware');
 const healthRoutes = require('./health.routes');
 const userRoutes = require('./user.routes');
 const taskRoutes = require('./task.routes');
+const integrationRoutes = require('./integrations.routes');
 
 // Route registry
 const routes = new Map();
@@ -143,6 +144,14 @@ apiRouter.post('/tasks', taskRoutes.createTask);
 apiRouter.put('/tasks/:id', taskRoutes.updateTask);
 apiRouter.delete('/tasks/:id', taskRoutes.deleteTask);
 apiRouter.patch('/tasks/:id/status', taskRoutes.updateTaskStatus);
+
+// Integration routes
+apiRouter.get('/integrations/available', integrationRoutes.getAvailableIntegrations);
+apiRouter.get('/integrations/connected', integrationRoutes.getConnectedIntegrations);
+apiRouter.get('/integrations/stats', integrationRoutes.getIntegrationStats);
+apiRouter.post('/integrations/connect', integrationRoutes.connectIntegration);
+apiRouter.post('/integrations/:connectionId/sync', integrationRoutes.syncIntegration);
+apiRouter.delete('/integrations/:connectionId', integrationRoutes.disconnectIntegration);
 
 // Mount API routes
 mainRouter.use(config.apiPrefix, apiRouter);
