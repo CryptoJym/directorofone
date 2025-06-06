@@ -58,16 +58,25 @@ export default function Home() {
     icon: featureIconMap[index],
   }));
 
+  // Override the secondary action to point to dashboard
+  const heroWithDashboardLink = {
+    ...landingContent.hero,
+    secondaryAction: {
+      label: "View Dashboard Demo",
+      href: "/dashboard"
+    }
+  };
+
   return (
     <main>
       {/* Hero Section */}
       <Hero
-        badge={landingContent.hero.badge}
-        title={landingContent.hero.title}
-        subtitle={landingContent.hero.subtitle}
-        description={landingContent.hero.description}
-        primaryAction={landingContent.hero.primaryAction}
-        secondaryAction={landingContent.hero.secondaryAction}
+        badge={heroWithDashboardLink.badge}
+        title={heroWithDashboardLink.title}
+        subtitle={heroWithDashboardLink.subtitle}
+        description={heroWithDashboardLink.description}
+        primaryAction={heroWithDashboardLink.primaryAction}
+        secondaryAction={heroWithDashboardLink.secondaryAction}
         align="center"
         variant="simple"
       />
